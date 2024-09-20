@@ -1,0 +1,52 @@
+services:
+  db:
+    image: postgres:13
+    environment:
+      POSTGRES_DB: fatmug
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: myown1983
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+  redis:
+    image: redis:alpine
+    networks:
+      - app-network
+
+  web:
+    build: .
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - .:/app
+      - media_data:/app/media
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - redis
+    networks:
+      - app-network
+
+  celery:
+    build: .
+    command: celery -A backend worker --loglevel=info
+    volumes:
+      - .:/app
+      - media_data:/app/media
+    depends_on:
+      - redis
+      - db
+    networks:
+      - app-network
+
+volumes:
+  postgres_data:
+  media_data:
+
+
+networks:
+  app-network:
